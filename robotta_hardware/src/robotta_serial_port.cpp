@@ -1,0 +1,353 @@
+#include <stdio.h>
+#include <string.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <termios.h>
+#include <unistd.h>
+#include <rclcpp/rclcpp.hpp>
+
+#include "robotta_hardware/robotta_serial_port.hpp"
+
+#define START_FRAME     0xABCD
+// #define HDLC_FRAME_BOUNDRY_FLAG     0x7E
+// #define HDLC_ESCAPE_FLAG            0x7D
+// #define HDLC_ESCAPE_XOR             0x20
+// #define HDLC_CRC_INIT_VALUE         0xFFFF
+
+using namespace robotta::hardware;
+
+RobottaSerialPort::RobottaSerialPort()
+    : serial_port_(-1)
+    // , rx_frame_length_(0)
+    // , rx_frame_crc_(HDLC_CRC_INIT_VALUE)
+    // , rx_frame_escape_(false)
+    // , tx_frame_length_(0)
+    // , tx_frame_crc_(HDLC_CRC_INIT_VALUE)
+{
+
+}
+
+RobottaSerialPort::~RobottaSerialPort()
+{
+    close();
+}
+
+return_type RobottaSerialPort::open(const std::string & port_name)
+{
+    // if (port_name != DEFAULT_PORT) {
+    //     fprintf(stderr, "Port is not set in config, using default: %s", port_name.c_str());
+    //     return return_type::ERROR;
+    // }
+
+    serial_port_ = ::open(port_name.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+    // serial_port_ = ::open("/dev/ttyUSB", O_RDWR | O_NOCTTY | O_NDELAY);
+    // fprintf(stderr, "Success to open serial port: %s (%d)\n", strerror(errno), errno);
+    if (serial_port_ < 0) {
+        fprintf(stderr, "Failed to open serial port: %s (%d)\n", strerror(errno), errno);
+        return return_type::ERROR;
+    }
+
+    struct termios tty_config{};
+    if (::tcgetattr(serial_port_, &tty_config) != 0) {
+        fprintf(stderr, "Failed to get serial port configuration: %s (%d)\n", strerror(errno), errno);
+        close();
+        return return_type::ERROR;
+    }
+
+    memset(&tty_config, 0, sizeof(termios));
+    tty_config.c_cflag = B115200 | CS8 | CLOCAL | CREAD;
+    tty_config.c_iflag = IGNPAR;
+    tty_config.c_oflag = 0;
+    tty_config.c_lflag = 0;
+    tty_config.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
+    tty_config.c_cc[VMIN] = 0;
+    tcflush(serial_port_, TCIFLUSH);
+    // tcsetattr(serial_port_, TCSANOW, &tty_config);
+
+    /*
+    if (::cfsetispeed(&tty_config, B9600) != 0 || ::cfsetospeed(&tty_config, B9600) != 0) {
+        fprintf(stderr, "Failed to set serial port speed: %s (%d)\n", strerror(errno), errno);
+        close();
+        return return_type::ERROR;
+    }
+    */
+
+    if (::tcsetattr(serial_port_, TCSANOW, &tty_config) != 0) {
+        fprintf(stderr, "Failed to set serial port configuration: %s (%d)\n", strerror(errno), errno);
+        close();
+        return return_type::ERROR;
+    }
+
+    return return_type::SUCCESS;
+}
+
+return_type RobottaSerialPort::close()
+{
+    if (is_open()) {
+        ::close(serial_port_);
+        serial_port_ = -1;
+    }
+    return return_type::SUCCESS;
+}
+
+return_type RobottaSerialPort::read_frames()
+{
+    if (!is_open()) {
+        // close();
+        return return_type::ERROR;
+    }
+    if (serial_port_ != -1) {
+        uint8_t c;
+        int i = 0, r = 0;
+        // fprintf(stderr, "read_framessss\n");
+        while ((r = ::read(serial_port_, &c, 1)) > 0 && i++ < 1024){
+                // fprintf(stderr, "value of r: %i\n", r);
+                // fprintf(stderr, "read_frames\n");
+                protocol_recv(c);
+                // fprintf(stderr, "while looping\n");
+        }
+                // if (msg.start == START_FRAME && msg.checksum == checksum) {
+                // // std_msgs::msg::Float64 f;
+                // std::vector<SerialFeedback> f;
+                // fprintf(stderr, "voltage : %d\n", msg.batVoltage);
+
+        if (r < 0 && errno != EAGAIN){
+                //RCLCPP_ERROR("Reading from serial %s failed: %d", port.c_str(), r);
+            fprintf(stderr, "Failed to read serial port data: %s (%d)\n", strerror(errno), r);
+            return return_type::ERROR;}
+    }
+    
+    // Read data from the serial port
+    // if (serial_port_ != -1) {
+    //     unsigned char c;
+    //     int i = 0, r = 0;
+    //         int msg_len = 0;
+    //     char prev_byte = 0;
+    //     char* p;
+    //     SerialFeedback msg, prev_msg;
+    //     uint16_t start_frame = ((uint16_t)(byte) << 8) | (uint8_t)prev_byte;
+
+    //     // Read the start frame
+    //     if (start_frame == START_FRAME) {
+    //         p = (char*)&msg;
+    //         *p++ = prev_byte;
+    //         *p++ = byte;
+    //         msg_len = 2;
+    //     } else if (msg_len >= 2 && msg_len < sizeof(SerialFeedback)) {
+    //         // Otherwise just read the message content until the end
+    //         *p++ = byte;
+    //         msg_len++;
+    //     }
+
+    //     if (msg_len == sizeof(SerialFeedback)) {
+    //         uint16_t checksum = (uint16_t)(
+    //             msg.start ^
+    //             msg.cmd1 ^
+    //             msg.cmd2 ^
+    //             msg.speedR_meas ^
+    //             msg.speedL_meas ^
+    //             msg.wheelR_cnt ^
+    //             msg.wheelL_cnt ^
+    //             msg.batVoltage ^
+    //             msg.boardTemp ^
+    //             msg.cmdLed);
+
+    //         if (msg.start == START_FRAME && msg.checksum == checksum) {
+    //             // std_msgs::Float64 f;
+
+    //         //     f.data = (double)msg.batVoltage/100.0;
+
+    //         //     voltage_pub.publish(f);
+    //             float batVoltage =(double) msg.batVoltage;
+    //             fprintf(stderr, "Voltage: %f\n", batVoltage);
+
+    //         //     f.data = (double)msg.boardTemp/10.0;
+    //         //     temp_pub.publish(f);
+
+    //             // Convert RPM to RAD/S
+    //             // joints_vel_data[0] = direction_correction * (abs(msg.speedR_meas) * 0.10472);
+    //             // joints_vel_data[1] = direction_correction * (abs(msg.speedL_meas) * 0.10472);
+    //             // vel_pub[0].publish(joints[0].vel);
+    //             // vel_pub[1].publish(joints[1].vel);
+
+    //         //     // Process encoder values and update odometry
+    //         //     on_encoder_update (msg.wheelR_cnt, msg.wheelL_cnt);
+    //         } else {
+    //             fprintf(stderr,"Hoverboard checksum mismatch: %d vs %d\n", msg.checksum, checksum);
+    //         }
+    //         msg_len = 0;
+    //     }
+    //     prev_byte = byte;   
+    //     // protocol_recv(c);
+    //     // while ((r = ::read(serial_port_, &c, 1)) > 0 && i++ < 1024)
+    //     //     protocol_recv(c);
+
+
+    //     if (r < 0 && errno != EAGAIN)
+    //         //RCLCPP_ERROR("Reading from serial %s failed: %d", port.c_str(), r);
+    //         fprintf(stderr, "Failed to read serial port data: %s (%d)\n", strerror(errno), errno);
+    // }
+
+    return return_type::SUCCESS;
+}
+
+void RobottaSerialPort::protocol_recv (uint8_t byte) {
+    start_frame = ((uint16_t)(byte) << 8) | prev_byte;
+    // fprintf(stderr, "read_framessss\n");
+    // uint16_t start_frame = ((uint16_t)(byte) << 8) | (uint8_t)prev_byte;
+
+    // Read the start frame
+    if (start_frame == START_FRAME) {
+        //RCLCPP_INFO(this->get_logger(), "Start frame recognised");
+        p = (uint8_t*)&msg;
+        *p++ = prev_byte;
+        *p++ = byte;
+        msg_len = 2;
+        // fprintf(stderr, "read start frames\n");
+    } else if (msg_len >= 2 && msg_len < sizeof(SerialFeedback)) {
+        // Otherwise just read the message content until the end
+        *p++ = byte;
+        msg_len++;
+            // fprintf(stderr, "read message content\n");
+    }
+
+    if (msg_len == sizeof(SerialFeedback)) {
+        uint16_t checksum = (uint16_t)(
+            msg.start ^
+            msg.cmd1 ^
+            msg.cmd2 ^
+            msg.speedR_meas ^
+            msg.speedL_meas ^
+            msg.wheelR_cnt ^
+            msg.wheelL_cnt ^
+            msg.batVoltage ^
+            msg.boardTemp ^
+            msg.cmdLed);
+        fprintf(stderr, "success : ");
+        if (msg.start == START_FRAME && msg.checksum == checksum) {
+            // std_msgs::msg::Float64 f;
+            std::vector<SerialFeedback> f;
+            float volt = (double) msg.batVoltage /100;
+            fprintf(stderr, "voltage : %f\n", volt);
+            fprintf(stderr, "wheelR_cnt : %d\n", msg.wheelR_cnt);
+
+            // f.data = (double)msg.batVoltage/100.0;
+            // voltage_pub_->publish(f);
+
+            // f.data = (double)msg.boardTemp/10.0;
+            // temp_pub_->publish(f);
+
+            // f.data = (double)msg.speedL_meas;
+            // vel_pub_[0]->publish(f);
+            // f.data = (double)msg.speedR_meas;
+            // vel_pub_[1]->publish(f);
+
+            // f.data = (double)msg.cmd1;
+            // cmd_pub_[0]->publish(f);
+            // f.data = (double)msg.cmd2;
+            // cmd_pub_[1]->publish(f);
+        } else {
+            fprintf(stderr, "Hoverboard checksum mismatch: %d vs %d", msg.checksum, checksum);
+        }
+        msg_len = 0;
+    }
+    prev_byte = byte;
+}
+
+//return_type RobottaSerialPort::write_frame(const uint8_t* data, size_t size)
+return_type RobottaSerialPort::write_frame(const double speed, const double steer)
+{
+    if (!is_open()) {
+        return return_type::ERROR;
+    }
+    
+    // Calculate steering from difference of left and right
+    // const double speed = 0.02;
+    // const double steer = 0;
+
+    SerialCommand command;
+    command.start = (uint16_t)START_FRAME;
+    command.steer = (int16_t)steer;
+    command.speed = (int16_t)speed;
+    command.checksum = (uint16_t)(command.start ^ command.steer ^ command.speed);
+
+    // Generate the frame
+    // tx_frame_length_ = 0;
+    // tx_frame_crc_  = HDLC_CRC_INIT_VALUE;
+    // tx_frame_buffer_[tx_frame_length_++] = HDLC_FRAME_BOUNDRY_FLAG;
+    // for (size_t i = 0; i < size; i++) {
+    //     tx_frame_crc_ = crc_update(tx_frame_crc_, data[i]);
+    //     encode_byte(data[i]);
+    // }
+    // encode_byte((tx_frame_crc_ & 0xFF));
+    // encode_byte(((tx_frame_crc_ >> 8) & 0xFF));
+    // tx_frame_buffer_[tx_frame_length_++] = HDLC_FRAME_BOUNDRY_FLAG;
+
+    int rc = ::write(serial_port_, (const void*)&command, sizeof(command));
+    if ( rc == -1) {
+        fprintf(stderr, "Failed to write serial port data: %s (%d)\n", strerror(errno), errno);
+        return return_type::ERROR;
+    }
+
+    return return_type::SUCCESS;
+}
+
+bool RobottaSerialPort::is_open() const
+{
+    return serial_port_ >= 0;
+}
+
+// void RobottaSerialPort::encode_byte(uint8_t data)
+// {
+//     if (data == HDLC_ESCAPE_FLAG || data == HDLC_FRAME_BOUNDRY_FLAG) {
+//         tx_frame_buffer_[tx_frame_length_++] = HDLC_ESCAPE_FLAG;
+//         data ^= HDLC_ESCAPE_XOR;
+//     }
+//     tx_frame_buffer_[tx_frame_length_++] = data;
+// }
+
+// void RobottaSerialPort::decode_byte(uint8_t data, std::vector<SerialHdlcFrame>& frames)
+// {
+//     if (data == HDLC_FRAME_BOUNDRY_FLAG) {
+//         if (rx_frame_escape_) {
+//             rx_frame_escape_ = false;
+//         }
+//         else if (rx_frame_length_ >= 2 && rx_frame_crc_ == ((rx_frame_buffer_[rx_frame_length_ - 1] << 8) | rx_frame_buffer_[rx_frame_length_ - 2])) {
+//             SerialHdlcFrame frame;
+//             memcpy(frame.data, rx_frame_buffer_, rx_frame_length_ - 2);
+//             frame.length = rx_frame_length_ - 2;
+//             frames.push_back(frame);
+//         }
+//         rx_frame_length_ = 0;
+//         rx_frame_crc_ = HDLC_CRC_INIT_VALUE;
+//         return;
+//     }
+
+//     if (data == HDLC_ESCAPE_FLAG) {
+//         rx_frame_escape_ = true;
+//         return;
+//     }
+
+//     if (rx_frame_escape_) {
+//         rx_frame_escape_ = false;
+//         data ^= HDLC_ESCAPE_XOR;
+//     }
+
+//     rx_frame_buffer_[rx_frame_length_] = data;
+//     if (rx_frame_length_ >= 2) {
+//         rx_frame_crc_ = crc_update(rx_frame_crc_, rx_frame_buffer_[rx_frame_length_ - 2]);
+//     }
+//     rx_frame_length_++;
+
+//     if (rx_frame_length_ == Robotta_SERIAL_SERIAL_FRAME_MAX_SIZE) {
+//         rx_frame_length_ = 0;
+//         rx_frame_crc_ = HDLC_CRC_INIT_VALUE;
+//     }
+// }
+
+// uint16_t RobottaSerialPort::crc_update(uint16_t crc, uint8_t data)
+// {
+//     data ^= (uint8_t)(crc & 0xFF);
+//     data ^= (data << 4);
+//     return ((((uint16_t)data << 8) | ((uint8_t)(crc >> 8) & 0xFF)) ^ (uint8_t)(data >> 4) ^ ((uint16_t)data << 3));
+// }

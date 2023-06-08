@@ -1,0 +1,9 @@
+<library path="robotta_hardware">
+  <class name="robotta_hardware/RobottaHardware"
+         type="robotta::hardware::RobottaHardware"
+         base_class_type="hardware_interface::SystemInterface">
+    <description>
+      hardware interface for robotta 
+    </description>
+  </class>
+</library>
