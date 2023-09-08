@@ -5,7 +5,10 @@
         <ros2_control name="RealRobot" type="system">
             <hardware>
                 <plugin>robotta_hardware/RobottaHardware</plugin>
-                <param name="serial_port">/dev/ttyUSB1</param>   
+                <param name="serial_port">/dev/ttyUSB0</param>  
+                <!-- <param name="loop_rate">30</param>
+                <param name="timeout">1000</param>
+                <param name="enc_counts_per_rev">8999</param>  -->
             </hardware>
 
             <joint name="left_wheel_joint">

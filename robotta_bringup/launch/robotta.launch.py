@@ -27,6 +27,12 @@ def generate_launch_description():
 
     controller_param_file = os.path.join(get_package_share_directory('robotta_bringup'),'config','robotta_controller.yaml')
 
+    imu_filter_config = os.path.join(              
+        get_package_share_directory('robotta_bringup'),
+        'config',
+        'imu_filter_param.yaml'
+    ) 
+
     controller_manager = Node(
         package="controller_manager",
         executable="ros2_control_node",
@@ -62,6 +68,18 @@ def generate_launch_description():
         )
     )
 
+    imu_filter_node = Node(
+        package='imu_filter_madgwick',
+        executable='imu_filter_madgwick_node',
+        parameters=[imu_filter_config]
+    )
+
+    ekf_node = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource([os.path.join(
+            get_package_share_directory('robotta_bringup'), 'launch'),
+            '/ekf_robotta_launch.py'])
+    )
+
     return LaunchDescription([
         rsp,
         # controller_manager,
@@ -69,5 +87,7 @@ def generate_launch_description():
         # joint_broad_spawner,
         delayed_controller_manager,
         delayed_diff_drive_spawner,
-        delayed_joint_broad_spawner
+        delayed_joint_broad_spawner,
+        # imu_filter_node,
+        # ekf_node,
     ])

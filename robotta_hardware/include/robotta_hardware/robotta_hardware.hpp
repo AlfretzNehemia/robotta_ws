@@ -6,9 +6,18 @@
 #include <hardware_interface/system_interface.hpp>
 #include <rclcpp/macros.hpp>
 #include <vector>
-
+#include "std_msgs/msg/float64.hpp"
+#include "std_msgs/msg/string.hpp"
+#include <rclcpp/rclcpp.hpp>
 #include "robotta_hardware/robotta_serial_port.hpp"
 #include "robotta_hardware/robotta_hardware_compiler.h"
+
+#define ENCODER_MIN 0
+#define ENCODER_MAX 9000
+#define ENCODER_LOW_WRAP_FACTOR 0.3
+#define ENCODER_HIGH_WRAP_FACTOR 0.7
+
+#define TICKS_PER_ROTATION 90
 
 namespace robotta
 {
@@ -61,6 +70,36 @@ namespace robotta
             std::vector<double> velocity_commands_saved_;
             std::shared_ptr<RobottaSerialPort> serial_port_;
             std::string serial_port_name_;
+            void on_encoder_update (int16_t right, int16_t left);
+
+            // double last_wheelcountR = last_wheelcountL = 0;
+
+            rclcpp::Time last_read;
+            // Last known encoder values
+            int16_t last_wheelcountR;
+            int16_t last_wheelcountL;
+            // Count of full encoder wraps
+            int multR;
+            int multL;
+
+            // Thresholds for calculating the wrap
+            int low_wrap = ENCODER_LOW_WRAP_FACTOR*(ENCODER_MAX - ENCODER_MIN) + ENCODER_MIN;
+            int high_wrap = ENCODER_HIGH_WRAP_FACTOR*(ENCODER_MAX - ENCODER_MIN) + ENCODER_MIN;
+            
+            // ROS2 Publishers
+            // std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> odometry_publisher_ = nullptr;
+            // rclcpp::Node node;
+            // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr vel_meas_left;
+            // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr vel_meas_right;
+            // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr vel_cmd_left;
+            // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr vel_cmd_right;
+            // rclcpp::Publisher<std_msgs::msg::Float64>::SharedPtr voltage_;
+
+            // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> vel_meas_left = nullptr;
+            // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> vel_meas_right = nullptr;
+            // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> vel_cmd_left = nullptr;
+            // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> vel_cmd_right = nullptr;
+            // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> voltage_ = nullptr;
 
         };
     }

@@ -1,0 +1,24 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/home/alfretz/robotta_old/install/robotta_hardware/include/**",
+        "/home/alfretz/robotta_old/install/robotta_controller/include/**",
+        "/opt/ros/foxy/include/**",
+        "/home/alfretz/robotta_old/src/robotta_ws/robotta_controller/include/**",
+        "/home/alfretz/robotta_old/src/robotta_ws/robotta_hardware/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

@@ -9,7 +9,6 @@
 #include "lifecycle_msgs/msg/state.hpp"
 #include "rclcpp/logging.hpp"
 #include "tf2/LinearMath/Quaternion.h"
-// #include "control_toolbox/pid_ros.hpp"
 
 namespace
 {
@@ -83,18 +82,7 @@ controller_interface::return_type RobottaDriveController::init(const std::string
     auto_declare<double>("angular.z.max_jerk", NAN);
     auto_declare<double>("angular.z.min_jerk", NAN);
     auto_declare<double>("publish_rate", publish_rate_);
-    auto_declare<double>("kp_L", 1);
-    auto_declare<double>("ki_L", 0);
-    auto_declare<double>("kd_L", 0);
-    auto_declare<double>("i_max_L", 0);
-    auto_declare<double>("i_min_L", 00);
-    auto_declare<double>("antiwindup_L", false);
-    auto_declare<double>("kp_R", 1);
-    auto_declare<double>("ki_R", 0);
-    auto_declare<double>("kd_R", 0);
-    auto_declare<double>("i_max_R", 0);
-    auto_declare<double>("i_min_R", 00);
-    auto_declare<double>("antiwindup_R", false);
+
   }
   catch (const std::exception & e)
   {
@@ -191,6 +179,12 @@ controller_interface::return_type RobottaDriveController::update()
       const double left_position = registered_left_wheel_handles_[index].position.get().get_value();
       const double right_position = registered_right_wheel_handles_[index].position.get().get_value();
 
+      RCLCPP_INFO(
+          logger, "left position: [%f]", left_position);
+      
+      RCLCPP_INFO(
+          logger, "right position: [%f]", right_position);
+
       if (std::isnan(left_position) || std::isnan(right_position))
       {
         RCLCPP_ERROR(
@@ -276,19 +270,8 @@ controller_interface::return_type RobottaDriveController::update()
     actual_left_velocity_ = registered_left_wheel_handles_[index].velocity.get().get_value();
     actual_right_velocity_ = registered_right_wheel_handles_[index].velocity.get().get_value();
 
-    // pid_output[0] = control_toolbox::Pid[0] (actual_left_velocity_, velocity_left_cmd, period);
-    // pid_output[1] = control_toolbox::Pid[0] (actual_right_velocity_, velocity_right_cmd, period);
-
   }
-  double vel_errorL = velocity_left_cmd - actual_left_velocity_;
-  double vel_errorR = velocity_right_cmd - actual_right_velocity_; 
   
-  double pid_outputL;
-  double pid_outputR;
-
-  pid_outputL = pid_config_L.computeCommand(vel_errorL, update_dt.seconds());
-  pid_outputR = pid_config_L.computeCommand(vel_errorR, update_dt.seconds());
-
   // Set wheels velocities:
   for (size_t index = 0; index < wheels.wheels_per_side; ++index)
   {
@@ -359,36 +342,6 @@ CallbackReturn RobottaDriveController::on_configure(const rclcpp_lifecycle::Stat
     static_cast<int>(node_->get_parameter("cmd_vel_timeout").as_double() * 1000.0)};
   publish_limited_velocity_ = node_->get_parameter("publish_limited_velocity").as_bool();
   use_stamped_vel_ = node_->get_parameter("use_stamped_vel").as_bool();
-
-  try {
-    pid_config_L = control_toolbox::Pid(
-      node_->get_parameter("kp_L").as_double(),
-      node_->get_parameter("ki_L").as_double(),
-      node_->get_parameter("kd_L").as_double(),
-      node_->get_parameter("i_max_L").as_double(),
-      node_->get_parameter("i_min_L").as_double(),
-      node_->get_parameter("antiwindup_L").as_double()
-    );
-  }
-  catch (const std::runtime_error & e)
-  {
-    RCLCPP_ERROR(node_->get_logger(), "Error configuring pid controller: %s", e.what());
-  }
-
-  try {
-    pid_config_R = control_toolbox::Pid(
-      node_->get_parameter("kp_R").as_double(),
-      node_->get_parameter("ki_R").as_double(),
-      node_->get_parameter("kd_R").as_double(),
-      node_->get_parameter("i_max_R").as_double(),
-      node_->get_parameter("i_min_R").as_double(),
-      node_->get_parameter("antiwindup_R").as_double()
-    );
-  }
-  catch (const std::runtime_error & e)
-  {
-    RCLCPP_ERROR(node_->get_logger(), "Error configuring pid controller: %s", e.what());
-  }
 
   try
   {
@@ -489,6 +442,13 @@ CallbackReturn RobottaDriveController::on_configure(const rclcpp_lifecycle::Stat
         twist_stamped->header.stamp = node_->get_clock()->now();
       });
   }
+
+  // Debugging publisher
+  // vel_left_ = node_->create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/velocity",rclcpp::SystemDefaultsQoS());
+  // vel_right_ = node_->create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/velocity",rclcpp::SystemDefaultsQoS());
+  // cmd_left_ = node_->create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/velocity",rclcpp::SystemDefaultsQoS());
+  // cmd_right_ = node_->create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/velocity",rclcpp::SystemDefaultsQoS());
+
 
   // initialize odometry publisher and messasge
   odometry_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>(

@@ -24,9 +24,9 @@
 #include "realtime_tools/realtime_buffer.h"
 #include "realtime_tools/realtime_publisher.h"
 #include "tf2_msgs/msg/tf_message.hpp"
-#include "control_toolbox/control_toolbox/pid.hpp"
+#include "std_msgs/msg/float64.hpp"
 
-
+// #include <control_toolbox/control_toolbox/pid_ros.hpp>
 //#include "robotta_controller/robotta_wheel.hpp"
 #include "robotta_controller/robotta_controller_compiler.h"
 
@@ -36,6 +36,7 @@ namespace controller
 {
     using CallbackReturn = rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn;
     using Twist = geometry_msgs::msg::TwistStamped;
+    // using RealtimePIDStatePublisher = realtime_tools::RealtimePublisher<control_msgs::msg::PidState>;
 
     // struct PIDConfig
     // {
@@ -124,6 +125,11 @@ namespace controller
 
         RobottaOdometry odometry_;
 
+        // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> vel_left_ = nullptr;
+        // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> vel_right_ = nullptr;
+        // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> cmd_left_ = nullptr;
+        // std::shared_ptr<rclcpp::Publisher<std_msgs::msg::Float64>> cmd_right_ = nullptr;
+
         std::shared_ptr<rclcpp::Publisher<nav_msgs::msg::Odometry>> odometry_publisher_ = nullptr;
         std::shared_ptr<realtime_tools::RealtimePublisher<nav_msgs::msg::Odometry>>
         realtime_odometry_publisher_ = nullptr;
@@ -160,12 +166,8 @@ namespace controller
         // publish rate limiter
         double publish_rate_ = 50.0;
         rclcpp::Duration publish_period_{0, 0};
+        // const rclcpp::Duration dt;
         rclcpp::Time previous_publish_timestamp_{0};
-
-        // PID control
-        control_toolbox::Pid pid_config_L;
-        control_toolbox::Pid pid_config_R;
-
 
         bool is_halted = false;
         bool use_stamped_vel_ = true;
@@ -175,31 +177,14 @@ namespace controller
 
         double actual_left_velocity_;
         double actual_right_velocity_;
+    
+    // private:
+    //     void setParameterEventCallback();
+    //     std::shared_ptr<rclcpp::Node> left_node_;
+    //     std::shared_ptr<rclcpp::Node> right_node_;
+    //     std::unique_ptr<control_toolbox::PidROS> left_pid_;
+    //     std::unique_ptr<control_toolbox::PidROS> right_pid_;
     };
 }  // namespace controller
 }  // namespace robotta
 #endif  // __ROBOTTA_CONTROLLER__ROBOTTA_DRIVE_CONTROLLER_HPP_
-
-//     protected:
-//         rclcpp::Subscription<Twist>::SharedPtr velocity_command_subsciption_;
-//         realtime_tools::RealtimeBuffer<std::shared_ptr<Twist>> velocity_command_ptr_;
-//         std::shared_ptr<RobottaWheel> fl_wheel_;
-//         std::shared_ptr<RobottaWheel> fr_wheel_;
-//         std::shared_ptr<RobottaWheel> rl_wheel_;
-//         std::shared_ptr<RobottaWheel> rr_wheel_;
-//         std::string fl_wheel_joint_name_;
-//         std::string fr_wheel_joint_name_;
-//         std::string rl_wheel_joint_name_;
-//         std::string rr_wheel_joint_name_;
-//         double linear_scale_;
-//         double radial_scale_;
-//         double wheel_radius_;
-//         double wheel_distance_width_;
-//         double wheel_distance_length_;
-//         double wheel_separation_width_;
-//         double wheel_separation_length_;
-
-//     };
-// }
-//     //}
-// }

@@ -41,8 +41,8 @@ namespace robotta
             int16_t  wheelR_cnt;
             int16_t  wheelL_cnt; 
             int16_t  batVoltage;
-            int16_t  boardTemp;
-            uint16_t cmdLed;
+            // int16_t  boardTemp;
+            // uint16_t cmdLed;
             uint16_t checksum;
         } SerialFeedback;
 
@@ -61,6 +61,11 @@ namespace robotta
             // return_type write_frame();
             return_type write_frame(const double speed, const double steer);
             bool is_open() const;
+
+            double wheelL_hall;
+            double wheelR_hall;
+            double velL;
+            double velR;
 
         protected:
             // void encode_byte(uint8_t data);
