@@ -9,7 +9,7 @@ struct Config
   std::string left_wheel_name = "left_wheel";
   std::string right_wheel_name = "right_wheel";
   float loop_rate = 100;
-  std::string device = "/dev/ttyUSB1";
+  std::string device = "/dev/ttyUSB0";
   std::string baud_rate = "B115200";
 //   std::string cs8 = "CS8";
 //   std::string clocal = "CLOCAL";

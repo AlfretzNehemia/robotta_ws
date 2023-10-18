@@ -6,7 +6,7 @@
     <xacro:property name="chassis_length" value="0.5"/>
     <xacro:property name="chassis_width" value="0.5"/>
     <xacro:property name="chassis_height" value="0.138"/>
-    <xacro:property name="chassis_mass" value="3.5"/>    <!-- nilai asal-->
+    <xacro:property name="chassis_mass" value="1.5"/>    <!-- nilai asal-->
     <xacro:property name="chassis_upper_length" value = "0.05"/>
     <xacro:property name="chassis_upper_width" value = "0.30"/>
     <xacro:property name="chassis_upper_height" value = "0.515"/>
@@ -19,13 +19,17 @@
     <xacro:property name="wheel_offset_y" value="0.25"/>    <!-- nilai asal-->
     <xacro:property name="wheel_offset_z" value="0.05"/>
     <xacro:property name="caster_wheel_radius" value="0.03"/>
-    <xacro:property name="caster_wheel_mass" value="1.5"/>     <!-- nilai asal-->
+    <xacro:property name="caster_wheel_mass" value="1.0"/>     <!-- nilai asal-->
     <xacro:property name="caster_wheel_offset_x" value="0.45"/>
     <xacro:property name="caster_wheel_offset_y" value="0.20"/>  <!-- nilai asal-->
     <xacro:property name="caster_wheel_offset_z" value="${wheel_offset_z - wheel_radius + caster_wheel_radius}"/>
 
     <material name="white">
         <color rgba="1 1 1 1" />
+    </material>
+
+    <material name="gray">
+        <color rgba="0.6 0.6 0.6 1" />
     </material>
 
     <material name="orange">
@@ -76,7 +80,7 @@
             <geometry>
                 <box size= "${chassis_length} ${chassis_width} ${chassis_height}" />   <!-- geometry dari rangka badan xyz = 30x30x15 cm-->
             </geometry>
-            <material name ="white"/>
+            <material name ="gray"/>
         </visual>
         <collision>
             <origin xyz = "${chassis_length/2} 0 ${chassis_height/2}" />  <!-- titik cartesian untuk rangka badan-->
@@ -90,7 +94,7 @@
     </link>
 
     <gazebo reference="chassis">
-        <material>Gazebo/White</material>
+        <material>Gazebo/Gray</material>
     </gazebo>
 
     <!-- CHASSIS UPPER LINK -->
@@ -107,7 +111,7 @@
             <geometry>
                 <box size= "${chassis_upper_length} ${chassis_upper_width} ${chassis_upper_height}" />   <!--geometry dari rangka badan xyz = 15x15x30 cm -->
             </geometry>
-            <material name ="white"/>
+            <material name ="gray"/>
         </visual>
         <collision>
             <!-- <origin xyz = "-0.15 0 -0.075" />  titik cartesian untuk rangka badan -->
@@ -122,7 +126,7 @@
     </link>
 
     <gazebo reference="chassis_upper">
-        <material>Gazebo/White</material>
+        <material>Gazebo/Gray</material>
     </gazebo>
 
     <!-- LEFT WHEEL LINK -->

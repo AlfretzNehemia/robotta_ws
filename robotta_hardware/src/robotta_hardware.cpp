@@ -1,12 +1,16 @@
-
 #include <hardware_interface/types/hardware_interface_type_values.hpp>
 #include <pluginlib/class_list_macros.hpp>
-
+#include <rclcpp/rclcpp.hpp>
 #include <vector>
 #include <string>
+#include "std_msgs/msg/float64.hpp"
+#include "rclcpp/clock.hpp"
+#include "rclcpp/time.hpp"
+
 
 
 #include "robotta_hardware/robotta_hardware.hpp"
+#include "robotta_hardware/robotta_config.h"
 
 PLUGINLIB_EXPORT_CLASS(
     robotta::hardware::RobottaHardware,
@@ -32,7 +36,7 @@ hardware_interface::return_type RobottaHardware::configure(const hardware_interf
     velocity_states_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
     velocity_commands_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
     velocity_commands_saved_.resize(info_.joints.size(), std::numeric_limits<double>::quiet_NaN());
-    
+
     // TODO : Cara configure dan masukin data batteryVolt dan board temp
     // for (const hardware_interface::ComponentInfo & sensor : info_.sensors) {
     //     if (sensor.name["battVoltgae_"].empty()) {
@@ -44,7 +48,7 @@ hardware_interface::return_type RobottaHardware::configure(const hardware_interf
     //         RCLCPP_FATAL(rclcpp::get_logger("RobottaHardware"), "Motor id not defined for join %s", joint.name.c_str());
     //         return hardware_interface::return_type::ERROR;
     //     }
-    // } 
+    // }
 
     for (hardware_interface::ComponentInfo & joint : info_.joints)
     {
@@ -87,13 +91,12 @@ hardware_interface::return_type RobottaHardware::configure(const hardware_interf
     //     RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Robotta hardware failed to open serial port");
     //     return hardware_interface::return_type::ERROR;
     // }
-    // odometry_publisher_ = node_->create_publisher<nav_msgs::msg::Odometry>(
-    //     DEFAULT_ODOMETRY_TOPIC, rclcpp::SystemDefaultsQoS());
-    // vel_meas_left  = node.create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/velocity", 10);
-    // vel_meas_right = node.create_publisher<std_msgs::msg::Float64>("hoverboard/right_wheel/velocity", 10);
-    // vel_cmd_left   = node.create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/cmd", 10);
-    // vel_cmd_right  = node.create_publisher<std_msgs::msg::Float64>("hoverboard/right_wheel/cmd", 10);
-    // voltage_       = node.create_publisher<std_msgs::msg::Float64>("hoverboard/battery_voltage", 10);
+
+    // vel_pub_[0]    = rclcpp::create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/velocity", 10);
+    // vel_pub_[1]    = rclcpp::create_publisher<std_msgs::msg::Float64>("hoverboard/right_wheel/velocity", 10);
+    // cmd_pub_[0]    = rclcpp::create_publisher<std_msgs::msg::Float64>("hoverboard/left_wheel/cmd", 10);
+    // cmd_pub_[1]    = rclcpp::create_publisher<std_msgs::msg::Float64>("hoverboard/right_wheel/cmd", 10);
+    // voltage_pub_   = rclcpp::create_publisher<std_msgs::msg::Float64>("hoverboard/battery_voltage", 10);
 
     status_ = hardware_interface::status::CONFIGURED;
     return hardware_interface::return_type::OK;
@@ -191,11 +194,10 @@ hardware_interface::return_type RobottaHardware::stop()
 hardware_interface::return_type RobottaHardware::read()
 {
     // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Reading...");
-
+    // TODO : buat dua sistem, jika pake simulation gazebo dan jika pake robot real
     if (start() != hardware_interface::return_type::OK) {
         return hardware_interface::return_type::ERROR;
     }
-    // std_msgs::msg::Float64 f;
 
     serial_port_->read_frames();
 
@@ -205,19 +207,15 @@ hardware_interface::return_type RobottaHardware::read()
     // position_states_[0] = serial_port_->wheelL_hall;
     // position_states_[1] = serial_port_->wheelR_hall;
 
-    on_encoder_update(serial_port_->wheelL_hall, serial_port_->wheelR_hall);
-
-    // f.data = (double)serial_port_->velL;
-    // vel_meas_left->publish(f);
-
-    // f.data = (double)serial_port_->velR;
-    // vel_meas_right->publish(f);
+    on_encoder_update (serial_port_->wheelL_hall, serial_port_->wheelR_hall);
 
     // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Posisi Kiri: %f", position_states_[0]);
     // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Posisi Kanan: %f", position_states_[1]);
-    RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kiri: %f", velocity_states_[0]);
-    RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kanan: %f", velocity_states_[1]);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kiri: %f", velocity_states_[0]);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kanan: %f", velocity_states_[1]);
     
+    // fprintf(stderr, "velL : %f\n", velocity_states_[0]);
+    // fprintf(stderr, "velR : %f\n", velocity_states_[1]);
     return hardware_interface::return_type::OK;
 }
 
@@ -227,36 +225,35 @@ hardware_interface::return_type RobottaHardware::write()
     if (start() != hardware_interface::return_type::OK) {
         return hardware_interface::return_type::ERROR;
     }
-    
-    // Convert command velovity from RAD/S to RPM
+
+    // Convert PID outputs in RAD/S to RPM
     double set_cmd_left = velocity_commands_[0] / 0.10472;
     double set_cmd_right = velocity_commands_[1] / 0.10472;
 
-    // std_msgs::msg::Float64 m;
-
-    // m.data = (double)set_cmd_left;
-    // vel_cmd_left->publish(m);
-
-    // m.data = (double)set_cmd_right;
-    // vel_cmd_right->publish(m);
-
-
+    // double set_cmd_left = 33.6;
+    // double set_cmd_right = -33.6;
     // Calculate steering from difference of left and right
     // set_speed[0] = left wheel
     // set_speed[1] = right wheel
     // const double speed = (set_speed[0] + set_speed[1])/2.0;
     // const double steer = (set_speed[0] - speed)*2.0;
 
-    // const double set_cmd_left = -200.0;
-    // const double set_cmd_right = 0.0;
+    // const double set_cmd_left = -210.0;
+    // const double set_cmd_right = 210.0;
     
     serial_port_->write_frame(set_cmd_left, set_cmd_right);
-    
+
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kiri r/s: %f", velocity_commands_[0]);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kanan r/s: %f", velocity_commands_[1]);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Posisi x: %f", msg->pose.pose.position.x);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Posisi y: %f", msg->pose.pose.position.y);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kiri rpm: %f", set_cmd_left);
+    // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Kecepatan Kanan rpm: %f", set_cmd_right);
     // RCLCPP_INFO(rclcpp::get_logger("RobottaHardware"), "Motor successfully written!");
     return hardware_interface::return_type::OK;
 }
 
-void RobottaHardware::on_encoder_update(int16_t right, int16_t left){
+void RobottaHardware::on_encoder_update (int16_t right, int16_t left){
     double posL = 0.0, posR = 0.0;
 
     // Calculate wheel position in ticks, factoring in encoder wraps
@@ -312,11 +309,12 @@ void RobottaHardware::on_encoder_update(int16_t right, int16_t left){
     position_states_[1] = 2.0*M_PI * lastPubPosL / (double)TICKS_PER_ROTATION;
     position_states_[0] = 2.0*M_PI * lastPubPosR / (double)TICKS_PER_ROTATION;
 
-    // fprintf(stderr, "posL : %f\n", position_states_[0]);
-    // fprintf(stderr, "posR : %f\n", position_states_[1]);
+    // fprintf(stderr, "posL : %f\n", position_states_[1]);
+    // fprintf(stderr, "posR : %f\n", position_states_[0]);
     // pos_pub[0] = rclcpp::create_publisher<Float64>(position_states_[0]);
     // pos_pub[1] = rclcpp::create_publisher<Float64>(position_states_[1]);
 
     // pos_pub[0].publish(position_states_[0]);
     // pos_pub[1].publish(position_states_[1]);
 }
+

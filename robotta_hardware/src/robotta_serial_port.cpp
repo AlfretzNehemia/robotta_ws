@@ -35,7 +35,7 @@ return_type RobottaSerialPort::open(const std::string & port_name)
     //     return return_type::ERROR;
     // }
 
-    serial_port_ = ::open(port_name.c_str(), O_RDWR | O_NOCTTY | O_NDELAY);
+    serial_port_ = ::open(port_name.c_str(), O_RDWR| O_NOCTTY);
     // serial_port_ = ::open("/dev/ttyUSB", O_RDWR | O_NOCTTY | O_NDELAY);
     // fprintf(stderr, "Success to open serial port: %s (%d)\n", strerror(errno), errno);
     if (serial_port_ < 0) {
@@ -55,8 +55,9 @@ return_type RobottaSerialPort::open(const std::string & port_name)
     tty_config.c_iflag = IGNPAR;    // default IGNPAR IGNBRK
     tty_config.c_oflag = 0;
     tty_config.c_lflag = 0;
+    tty_config.c_iflag |= IXON | IXOFF;
     tty_config.c_cc[VTIME] = 10;    // Wait for up to 1s (10 deciseconds), returning as soon as any data is received.
-    tty_config.c_cc[VMIN] = 10;
+    tty_config.c_cc[VMIN] = 1;
     tcflush(serial_port_, TCIFLUSH);
     // tcsetattr(serial_port_, TCSANOW, &tty_config);
 
@@ -162,17 +163,20 @@ void RobottaSerialPort::protocol_recv (uint8_t byte) {
             wheelR_hall = msg.wheelR_cnt;
             velL = msg.speedL_meas;
             velR = msg.speedR_meas;
+            // fprintf(stderr, "Hoverboard batt voltage: : %f\n", volt, checksum);
 
         } else {
             fprintf(stderr, "Hoverboard checksum mismatch: %d vs %d", msg.checksum, checksum);
         }
         msg_len = 0;
+
     }
 
     // fprintf(stderr, "speedL_meas : %f\n", velL);
     // fprintf(stderr, "speedR_meas : %f\n", velR);
     // fprintf(stderr, "wheelL_cnt : %f\n", wheelL_hall);
     // fprintf(stderr, "wheelR_cnt : %f\n", wheelR_hall);
+
     prev_byte = byte;
 }
 

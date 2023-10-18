@@ -30,6 +30,7 @@ namespace robotta
             int16_t  steer;
             int16_t  speed;
             uint16_t checksum;
+            
         } SerialCommand;
 
         typedef struct {
